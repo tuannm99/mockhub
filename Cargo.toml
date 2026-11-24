@@ -1,0 +1,44 @@
+[workspace]
+resolver = "2"
+members = ["crates/*", "apps/*"]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2024"
+license = "MIT"
+
+[workspace.dependencies]
+mockhub-core = { path = "crates/mockhub-core" }
+mockhub-storage = { path = "crates/mockhub-storage" }
+mockhub-mail = { path = "crates/mockhub-mail" }
+mockhub-dns = { path = "crates/mockhub-dns" }
+mockhub-sms = { path = "crates/mockhub-sms" }
+mockhub-api = { path = "crates/mockhub-api" }
+mockhub-web = { path = "crates/mockhub-web" }
+
+# third-party
+tokio = { version = "1", features = ["full"] }
+axum = "0.8"
+tower-http = { version = "0.7", features = ["trace", "cors"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+toml = "1"
+thiserror = "2"
+anyhow = "1"
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+sqlx = { version = "0.9", default-features = false, features = ["runtime-tokio", "postgres", "uuid", "chrono", "migrate", "macros"] }
+uuid = { version = "1", features = ["v4", "serde"] }
+chrono = { version = "0.4", features = ["serde"] }
+async-trait = "0.1"
+mail-parser = "1"
+mail-builder = "2"
+hickory-proto = "0.26"
+hickory-server = "0.26"
+reqwest = { version = "0.13", default-features = false, features = ["json", "rustls"] }
+leptos = { version = "0.8", features = ["ssr"] }
+leptos_meta = "0.8"
+leptos_router = { version = "0.8", features = ["ssr"] }
+leptos_axum = "0.8"
+config = { version = "0.15", default-features = false, features = ["toml"] }
+clap = { version = "4", features = ["derive", "env"] }

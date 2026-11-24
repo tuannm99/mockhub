@@ -1,0 +1,28 @@
+[package]
+name = "mockhub-server"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[[bin]]
+name = "mockhub"
+path = "src/main.rs"
+
+[dependencies]
+mockhub-core.workspace = true
+mockhub-mail.workspace = true
+mockhub-dns.workspace = true
+mockhub-sms.workspace = true
+mockhub-web.workspace = true
+
+tokio.workspace = true
+anyhow.workspace = true
+
+tracing.workspace = true
+tracing-subscriber.workspace = true
+
+leptos.workspace = true
+leptos_axum.workspace = true
+axum.workspace = true
+clap.workspace = true
+

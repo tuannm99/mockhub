@@ -1,0 +1,31 @@
+services:
+  mockhub:
+    build: .
+    ports:
+      - "8080:8080"       # web
+      - "2525:2525"       # smtp
+      - "1143:1143"       # imap
+      - "8081:8081"       # sms api
+      - "5353:5353/udp"   # dns
+    environment:
+      MOCKHUB__DATABASE__URL: postgres://mockhub:mockhub@postgres:5432/mockhub
+      RUST_LOG: info
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  postgres:
+    image: postgres:17
+    environment:
+      POSTGRES_USER: mockhub
+      POSTGRES_PASSWORD: mockhub
+      POSTGRES_DB: mockhub
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U mockhub"]
+      interval: 3s
+      retries: 10
+
+volumes:
+  pgdata:

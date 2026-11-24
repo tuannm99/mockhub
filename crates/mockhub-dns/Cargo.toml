@@ -1,0 +1,15 @@
+[package]
+name = "mockhub-dns"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+mockhub-core.workspace = true
+mockhub-storage.workspace = true
+tokio.workspace = true
+hickory-proto.workspace = true
+hickory-server.workspace = true
+tracing.workspace = true
+thiserror.workspace = true
+async-trait.workspace = true
