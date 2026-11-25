@@ -84,6 +84,9 @@ pub fn DnsPage() -> Element {
         }
         Card {
             match &*records.read() {
+                Some(Ok(rows)) if rows.is_empty() => rsx! {
+                    p { class: "opacity-60", "Chưa có record nào. Thêm ở form phía trên." }
+                },
                 Some(Ok(rows)) => rsx! {
                     Table { head: vec!["Tên", "Loại", "Giá trị", ""],
                         for r in rows.clone() {

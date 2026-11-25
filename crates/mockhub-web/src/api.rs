@@ -8,7 +8,7 @@ use serde::{Deserialize, Serialize};
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct DnsRecord {
-    pub id: u32,
+    pub id: i64,
     pub name: String,
     pub kind: String,
     pub value: String,
@@ -16,53 +16,26 @@ pub struct DnsRecord {
 
 #[get("/api/dns/records")]
 pub async fn list_dns_records() -> Result<Vec<DnsRecord>> {
-    Ok(store::list())
+    let rows = crate::server::storage()?.list().await?;
+    Ok(rows.into_iter().map(Into::into).collect())
 }
 
 #[post("/api/dns/records")]
 pub async fn add_dns_record(name: String, kind: String, value: String) -> Result<DnsRecord> {
-    Ok(store::add(name, kind, value))
+    let new = mockhub_core::domain::dns::NewDnsRecord { name, kind, value };
+    Ok(crate::server::storage()?.create(new).await?.into())
 }
 
 #[post("/api/dns/records/delete")]
-pub async fn delete_dns_record(id: u32) -> Result<()> {
-    store::remove(id);
+pub async fn delete_dns_record(id: i64) -> Result<()> {
+    crate::server::storage()?.delete(id).await?;
     Ok(())
 }
 
-/// Store in-memory tạm để chạy được mẫu. Thay bằng `mockhub-storage`/`mockhub-dns`.
+/// Domain -> DTO. DTO tách riêng để client (wasm) không phải phụ thuộc `mockhub-core`.
 #[cfg(feature = "server")]
-mod store {
-    use super::DnsRecord;
-    use std::sync::{LazyLock, Mutex};
-
-    static RECORDS: LazyLock<Mutex<Vec<DnsRecord>>> = LazyLock::new(|| {
-        let r = |id, name: &str, kind: &str, value: &str| DnsRecord {
-            id,
-            name: name.into(),
-            kind: kind.into(),
-            value: value.into(),
-        };
-        Mutex::new(vec![
-            r(1, "app.test", "A", "127.0.0.1"),
-            r(2, "www.app.test", "CNAME", "app.test"),
-            r(3, "app.test", "MX", "10 mail.app.test"),
-        ])
-    });
-
-    pub fn list() -> Vec<DnsRecord> {
-        RECORDS.lock().unwrap().clone()
-    }
-
-    pub fn add(name: String, kind: String, value: String) -> DnsRecord {
-        let mut rows = RECORDS.lock().unwrap();
-        let id = rows.iter().map(|r| r.id).max().unwrap_or(0) + 1;
-        let rec = DnsRecord { id, name, kind, value };
-        rows.push(rec.clone());
-        rec
-    }
-
-    pub fn remove(id: u32) {
-        RECORDS.lock().unwrap().retain(|r| r.id != id);
+impl From<mockhub_core::domain::dns::DnsRecord> for DnsRecord {
+    fn from(r: mockhub_core::domain::dns::DnsRecord) -> Self {
+        Self { id: r.id, name: r.name, kind: r.kind, value: r.value }
     }
 }

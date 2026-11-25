@@ -10,6 +10,7 @@ path = "src/main.rs"
 
 [dependencies]
 mockhub-core.workspace = true
+mockhub-storage.workspace = true
 mockhub-web = { workspace = true, features = ["server"] }
 mockhub-mail.workspace = true
 mockhub-dns.workspace = true

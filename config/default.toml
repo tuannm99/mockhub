@@ -3,7 +3,8 @@ host = "0.0.0.0"
 port = 8080
 
 [database]
-url = "postgres://mockhub:mockhub@localhost:5432/mockhub"
+# sqlite://<đường dẫn tương đối> | sqlite:///<đường dẫn tuyệt đối> | sqlite::memory:
+url = "sqlite://data/mockhub.db"
 
 [mail]
 enabled = true

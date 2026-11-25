@@ -2525,6 +2525,7 @@ version = "0.40.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b06e69070b7e12262b0cd90832f0a7396f142a2b330181255562decf9f0c6215"
 dependencies = [
+ "cc",
  "pkg-config",
  "vcpkg",
 ]
@@ -2805,6 +2806,7 @@ dependencies = [
  "mockhub-dns",
  "mockhub-mail",
  "mockhub-sms",
+ "mockhub-storage",
  "mockhub-web",
  "tokio",
  "tracing",
@@ -2830,12 +2832,12 @@ dependencies = [
 name = "mockhub-storage"
 version = "0.1.0"
 dependencies = [
- "anyhow",
- "chrono",
+ "async-trait",
  "mockhub-core",
  "sqlx",
+ "thiserror 2.0.21",
  "tokio",
- "uuid",
+ "tracing",
 ]
 
 [[package]]
@@ -2843,6 +2845,8 @@ name = "mockhub-web"
 version = "0.1.0"
 dependencies = [
  "dioxus",
+ "mockhub-core",
+ "mockhub-storage",
  "serde",
 ]
 

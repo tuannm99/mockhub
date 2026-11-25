@@ -3,3 +3,4 @@ target
 .env
 crates/mockhub-web/node_modules
 crates/mockhub-web/public/.app.check.css
+data

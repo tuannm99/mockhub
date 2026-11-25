@@ -107,6 +107,10 @@ const WEB_HINT: &str = "Chạy `cd crates/mockhub-web && dx build --release --pl
     hoặc đặt DIOXUS_PUBLIC_PATH tới thư mục public đã build.";
 
 async fn web(cfg: Config) -> anyhow::Result<()> {
+    // Backend chọn theo scheme của `database.url`; phần còn lại của app chỉ thấy `dyn Storage`.
+    let storage = mockhub_storage::connect(&cfg.database.url).await?;
+    mockhub_web::server::set_storage(storage);
+
     let addr: SocketAddr = format!("{}:{}", cfg.server.host, cfg.server.port).parse()?;
     // SSR + hydrate: dioxus tự mount static assets (đọc `DIOXUS_PUBLIC_PATH`, mặc định
     // `<thư mục exe>/public`), render HTML phía server và đăng ký các server function (`/api/...`).

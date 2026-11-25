@@ -19,7 +19,8 @@ RUN cargo build --release -p mockhub-server
 RUN cd crates/mockhub-web && dx build --release --platform web
 
 FROM debian:trixie-slim AS runtime
-RUN useradd --system --uid 10001 mockhub
+RUN useradd --system --uid 10001 mockhub \
+    && mkdir /data && chown mockhub /data
 WORKDIR /app
 COPY --from=builder /app/target/release/mockhub /usr/local/bin/mockhub
 COPY --from=builder /app/target/dx/mockhub-web/release/web/public ./public
@@ -28,7 +29,10 @@ USER mockhub
 
 # web | smtp | imap | sms | dns(udp)
 EXPOSE 8080 2525 1143 8081 5353/udp
+# SQLite nằm ở /data (mount volume để giữ dữ liệu giữa các lần chạy)
+VOLUME /data
 ENV MOCKHUB__SERVER__HOST=0.0.0.0 \
+    MOCKHUB__DATABASE__URL=sqlite:///data/mockhub.db \
     DIOXUS_PUBLIC_PATH=/app/public
 ENTRYPOINT ["mockhub"]
 CMD ["all"]
