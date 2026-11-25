@@ -1,11 +1,8 @@
 use std::net::SocketAddr;
+use std::path::PathBuf;
 
-use axum::Router;
 use clap::{Parser, Subcommand};
-use leptos::prelude::*;
-use leptos_axum::{generate_route_list, LeptosRoutes};
 use mockhub_core::config::Config;
-use mockhub_web::app::{shell, App};
 use tokio::task::JoinSet;
 use tracing_subscriber::EnvFilter;
 
@@ -30,8 +27,37 @@ enum Cmd {
     Sms,
 }
 
-#[tokio::main]
-async fn main() -> anyhow::Result<()> {
+fn main() -> anyhow::Result<()> {
+    // Phải đặt env trước khi runtime tạo thread (set_var không an toàn khi đa luồng).
+    let public_dir = resolve_public_dir();
+    tokio::runtime::Builder::new_multi_thread()
+        .enable_all()
+        .build()?
+        .block_on(run(public_dir))
+}
+
+/// Thư mục client đã build (output `dx build`) cho SSR/hydrate. Thứ tự: `DIOXUS_PUBLIC_PATH`,
+/// `<thư mục exe>/public` (Docker/bản dx), rồi output `dx build` trong `target/dx` (chạy từ repo).
+/// Tìm được thì export vào `DIOXUS_PUBLIC_PATH` để dioxus dùng.
+fn resolve_public_dir() -> Option<PathBuf> {
+    let exe_public = std::env::current_exe()
+        .ok()
+        .and_then(|p| p.parent().map(|d| d.join("public")));
+    let candidates = std::env::var_os("DIOXUS_PUBLIC_PATH")
+        .map(PathBuf::from)
+        .into_iter()
+        .chain(exe_public)
+        .chain(["release", "debug"].map(|p| {
+            PathBuf::from(format!("target/dx/mockhub-web/{p}/web/public"))
+        }));
+    let dir = candidates.into_iter().find(|d| d.is_dir())?;
+    let dir = dir.canonicalize().unwrap_or(dir);
+    // SAFETY: gọi từ `main` trước khi tạo bất kỳ thread nào.
+    unsafe { std::env::set_var("DIOXUS_PUBLIC_PATH", &dir) };
+    Some(dir)
+}
+
+async fn run(public_dir: Option<PathBuf>) -> anyhow::Result<()> {
     tracing_subscriber::fmt()
         .with_env_filter(EnvFilter::try_from_default_env().unwrap_or_else(|_| "info".into()))
         .init();
@@ -44,7 +70,15 @@ async fn main() -> anyhow::Result<()> {
     let mut tasks: JoinSet<anyhow::Result<()>> = JoinSet::new();
 
     if all || matches!(cmd, Cmd::Web) {
-        tasks.spawn(web(cfg.clone()));
+        match public_dir {
+            Some(dir) => {
+                tracing::info!("web assets: {}", dir.display());
+                tasks.spawn(web(cfg.clone()));
+            }
+            // `all` vẫn chạy mail/dns/sms khi chưa build client; `web` thì báo lỗi rõ ràng.
+            None if all => tracing::warn!("bỏ qua web: không thấy client build. {WEB_HINT}"),
+            None => anyhow::bail!("không thấy client build. {WEB_HINT}"),
+        }
     }
     if (all && cfg.mail.enabled) || matches!(cmd, Cmd::Mail) {
         let cfg = cfg.clone();
@@ -69,20 +103,14 @@ async fn main() -> anyhow::Result<()> {
     Ok(())
 }
 
+const WEB_HINT: &str = "Chạy `cd crates/mockhub-web && dx build --release --platform web` \
+    hoặc đặt DIOXUS_PUBLIC_PATH tới thư mục public đã build.";
+
 async fn web(cfg: Config) -> anyhow::Result<()> {
     let addr: SocketAddr = format!("{}:{}", cfg.server.host, cfg.server.port).parse()?;
-    let options = LeptosOptions::builder()
-        .output_name("mockhub")
-        .site_addr(addr)
-        .build();
-    let routes = generate_route_list(App);
-
-    let app = Router::new()
-        .leptos_routes(&options, routes, {
-            let options = options.clone();
-            move || shell(options.clone())
-        })
-        .with_state(options);
+    // SSR + hydrate: dioxus tự mount static assets (đọc `DIOXUS_PUBLIC_PATH`, mặc định
+    // `<thư mục exe>/public`), render HTML phía server và đăng ký các server function (`/api/...`).
+    let app: axum::Router = dioxus::server::router(mockhub_web::app::App);
 
     tracing::info!("web listening on http://{addr}");
     let listener = tokio::net::TcpListener::bind(addr).await?;

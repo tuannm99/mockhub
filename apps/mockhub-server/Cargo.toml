@@ -10,10 +10,10 @@ path = "src/main.rs"
 
 [dependencies]
 mockhub-core.workspace = true
+mockhub-web = { workspace = true, features = ["server"] }
 mockhub-mail.workspace = true
 mockhub-dns.workspace = true
 mockhub-sms.workspace = true
-mockhub-web.workspace = true
 
 tokio.workspace = true
 anyhow.workspace = true
@@ -21,8 +21,7 @@ anyhow.workspace = true
 tracing.workspace = true
 tracing-subscriber.workspace = true
 
-leptos.workspace = true
-leptos_axum.workspace = true
 axum.workspace = true
+dioxus = { workspace = true, features = ["server"] }
 clap.workspace = true
 

@@ -1,42 +1,28 @@
-use leptos::prelude::*;
-use leptos_meta::{provide_meta_context, MetaTags, Title};
-use leptos_router::components::{Route, Router, Routes};
-use leptos_router::path;
+use dioxus::prelude::*;
 
 use crate::layouts::MainLayout;
-use crate::pages::{DnsPage, HomePage, MailPage, SmsPage};
+use crate::pages::{DnsPage, HomePage, MailPage, NotFound, SmsPage};
 
-/// HTML shell dùng cho SSR (không hydrate).
-pub fn shell(_options: LeptosOptions) -> impl IntoView {
-    view! {
-        <!DOCTYPE html>
-        <html lang="vi">
-            <head>
-                <meta charset="utf-8"/>
-                <meta name="viewport" content="width=device-width, initial-scale=1"/>
-                <MetaTags/>
-            </head>
-            <body>
-                <App/>
-            </body>
-        </html>
-    }
+#[derive(Clone, Debug, PartialEq, Routable)]
+pub enum Route {
+    #[layout(MainLayout)]
+    #[route("/")]
+    HomePage {},
+    #[route("/mail")]
+    MailPage {},
+    #[route("/dns")]
+    DnsPage {},
+    #[route("/sms")]
+    SmsPage {},
+    #[route("/:..segments")]
+    NotFound { segments: Vec<String> },
 }
 
 #[component]
-pub fn App() -> impl IntoView {
-    provide_meta_context();
-    view! {
-        <Title text="MockHub"/>
-        <Router>
-            <MainLayout>
-                <Routes fallback=|| "Not found.">
-                    <Route path=path!("/") view=HomePage/>
-                    <Route path=path!("/mail") view=MailPage/>
-                    <Route path=path!("/dns") view=DnsPage/>
-                    <Route path=path!("/sms") view=SmsPage/>
-                </Routes>
-            </MainLayout>
-        </Router>
+pub fn App() -> Element {
+    rsx! {
+        document::Title { "MockHub" }
+        document::Link { rel: "stylesheet", href: "/app.css" }
+        div { class: "min-h-screen bg-base-200 text-base-content", Router::<Route> {} }
     }
 }
