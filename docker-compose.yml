@@ -2,7 +2,7 @@ services:
   mockhub:
     build: .
     ports:
-      - "8080:8080"       # web
+      - "8686:8686"       # web
       - "2525:2525"       # smtp
       - "1143:1143"       # imap
       - "8081:8081"       # sms api

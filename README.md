@@ -110,9 +110,17 @@ cd crates/mockhub-web && dx build --release --platform web && cd ../..
 # 2) Chạy server. Tự tìm thư mục public ở bước 1 (xem "Thứ tự tìm client" bên dưới)
 cargo run -p mockhub-server -- web      # hoặc không có `web` để chạy cả mail/dns/sms
 
-# Dev UI có hot reload (server dioxus độc lập :8080, không chạy mail/dns/sms)
-cd crates/mockhub-web && dx serve --fullstack
+# Dev UI có hot reload (server dioxus độc lập :8080 mặc định của dx, không đọc config, không chạy mail/dns/sms)
+dx serve -p mockhub-web                 # chạy từ gốc repo; nếu dx không tự nhận fullstack thì thêm --fullstack
 ```
+
+- **`dx serve` vs `mockhub-server`**: `dx serve` chỉ chạy web (build lại cả client wasm lẫn server, hot reload).
+  `mockhub-server` chạy thêm SMTP/IMAP/DNS/SMS nhưng **chỉ phục vụ client đã `dx build` sẵn**.
+- **Sửa code `mockhub-web` rồi chạy `cargo run -p mockhub-server` mà quên `dx build` lại** thì wasm cũ hydrate lên HTML
+  SSR mới → lệch route/DOM (vd nav biến mất khi chuyển trang). Dev UI cứ dùng `dx serve`; muốn chạy server thật thì
+  `dx build` lại client trước. Lưu ý server ưu tiên thư mục `release` hơn `debug`, bản cũ có thể che bản mới.
+- `dx serve` không qua `mockhub-server` nên tự mở DB: mặc định `data/mockhub.db` ở **gốc repo** (không phụ thuộc cwd),
+  override bằng `MOCKHUB__DATABASE__URL`.
 
 Thứ tự tìm client (thư mục `public`): biến `DIOXUS_PUBLIC_PATH` → `<thư mục chứa exe>/public` (Docker) →
 `target/dx/mockhub-web/{release,debug}/web/public` (chạy từ gốc repo). Không thấy thì `mockhub all` bỏ qua web
@@ -176,7 +184,7 @@ Log: `RUST_LOG=debug`.
 
 | Service     | Port mặc định |
 | ----------- | ------------- |
-| web         | 8080          |
+| web         | 8686          |
 | smtp / imap | 2525 / 1143   |
 | sms api     | 8081          |
 | dns         | 5353/udp      |
@@ -188,7 +196,7 @@ Image build bằng `cargo` + `dx` (client wasm), **không cần Node** vì `publ
 
 ```sh
 docker compose up --build          # mockhub (SQLite trong volume `mockhub-data`)
-docker build -t mockhub . && docker run --rm -p 8080:8080 -p 2525:2525 -p 8081:8081 -p 5353:5353/udp mockhub
+docker build -t mockhub . && docker run --rm -p 8686:8686 -p 2525:2525 -p 8081:8081 -p 5353:5353/udp mockhub
 ```
 
 Container chạy non-root nên dùng cổng cao; muốn cổng chuẩn (25/53/143) thì map ở phía host (`-p 25:2525`).

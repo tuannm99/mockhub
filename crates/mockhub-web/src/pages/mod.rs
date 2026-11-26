@@ -19,7 +19,7 @@ pub fn HomePage() -> Element {
                 Link { class: "link link-primary", to: Route::SmsPage {}, "Xem tin nhắn →" }
             }
             Stat { title: "API Mock", value: "3", desc: "API :8086",
-                Link { class: "link link-primary", to: Route::ApiMockPage {}, "Xem tin nhắn →" }
+                Link { class: "link link-primary", to: Route::ApiMockPage {}, "Xem endpoint →" }
             }
         }
     }
@@ -161,20 +161,20 @@ pub fn SmsPage() -> Element {
 #[component]
 pub fn ApiMockPage() -> Element {
     let rows = [
-        ("noreply@app.test", "Xác nhận đăng ký", "10:02", true),
-        ("billing@shop.test", "Hóa đơn #1024", "09:40", false),
-        ("alice@example.test", "Re: họp sprint", "Hôm qua", false),
+        ("GET", "/api/users", "200", "Danh sách người dùng", Tone::Success),
+        ("POST", "/api/orders", "201", "Tạo đơn hàng", Tone::Success),
+        ("GET", "/api/orders/1024", "404", "Không tìm thấy đơn", Tone::Error),
     ];
     rsx! {
-        PageHeader { title: "API Mock", subtitle: "setup mock api" }
+        PageHeader { title: "API Mock", subtitle: "Endpoint giả lập trả về response cấu hình sẵn." }
         Card {
-            Table { head: vec!["Từ", "Tiêu đề", "Thời gian", ""],
-                for (from, subject, at, unread) in rows {
+            Table { head: vec!["Method", "Đường dẫn", "Status", "Mô tả"],
+                for (method, path, status, desc, tone) in rows {
                     tr {
-                        td { "{from}" }
-                        td { "{subject}" }
-                        td { "{at}" }
-                        td { if unread { Badge { tone: Tone::Primary, "Mới" } } }
+                        td { "{method}" }
+                        td { "{path}" }
+                        td { Badge { tone: tone, "{status}" } }
+                        td { "{desc}" }
                     }
                 }
             }

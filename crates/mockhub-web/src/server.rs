@@ -31,10 +31,13 @@ impl std::fmt::Display for ServerError {
 impl std::error::Error for ServerError {}
 
 /// Dev độc lập (`dx serve --fullstack`, không qua `mockhub-server`): tự mở storage từ env
-/// `MOCKHUB__DATABASE__URL` (mặc định `sqlite://data/mockhub.db`).
+/// `MOCKHUB__DATABASE__URL`. Mặc định là `data/mockhub.db` ở **root repo** (neo theo vị trí crate
+/// lúc compile), vì `dx serve` chạy với cwd = `crates/mockhub-web` nên đường dẫn tương đối sẽ
+/// tạo DB nhầm chỗ.
 pub async fn init_from_env() -> mockhub_storage::Result<()> {
-    let url = std::env::var("MOCKHUB__DATABASE__URL")
-        .unwrap_or_else(|_| "sqlite://data/mockhub.db".to_owned());
+    let url = std::env::var("MOCKHUB__DATABASE__URL").unwrap_or_else(|_| {
+        format!("sqlite://{}/../../data/mockhub.db", env!("CARGO_MANIFEST_DIR"))
+    });
     set_storage(mockhub_storage::connect(&url).await?);
     Ok(())
 }

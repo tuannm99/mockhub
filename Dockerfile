@@ -28,7 +28,7 @@ COPY config ./config
 USER mockhub
 
 # web | smtp | imap | sms | dns(udp)
-EXPOSE 8080 2525 1143 8081 5353/udp
+EXPOSE 8686 2525 1143 8081 5353/udp
 # SQLite nằm ở /data (mount volume để giữ dữ liệu giữa các lần chạy)
 VOLUME /data
 ENV MOCKHUB__SERVER__HOST=0.0.0.0 \
