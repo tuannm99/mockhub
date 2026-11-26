@@ -12,6 +12,7 @@ pub fn MainLayout() -> Element {
                 li { Link { to: Route::MailPage {}, active_class: "menu-active", "Mail" } }
                 li { Link { to: Route::DnsPage {}, active_class: "menu-active", "DNS" } }
                 li { Link { to: Route::SmsPage {}, active_class: "menu-active", "SMS" } }
+                li { Link { to: Route::ApiMockPage {}, active_class: "menu-active", "API Mock" } }
             }
         }
         main { class: "mx-auto flex max-w-5xl flex-col gap-5 px-6 py-8", Outlet::<Route> {} }

@@ -1,7 +1,7 @@
 use dioxus::prelude::*;
 
 use crate::layouts::MainLayout;
-use crate::pages::{DnsPage, HomePage, MailPage, NotFound, SmsPage};
+use crate::pages::{ApiMockPage, DnsPage, HomePage, MailPage, NotFound, SmsPage};
 
 #[derive(Clone, Debug, PartialEq, Routable)]
 pub enum Route {
@@ -14,6 +14,8 @@ pub enum Route {
     DnsPage {},
     #[route("/sms")]
     SmsPage {},
+    #[route("/api-mock")]
+    ApiMockPage {},
     #[route("/:..segments")]
     NotFound { segments: Vec<String> },
 }

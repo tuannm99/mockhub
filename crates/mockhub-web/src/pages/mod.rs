@@ -18,6 +18,9 @@ pub fn HomePage() -> Element {
             Stat { title: "SMS", value: "3", desc: "API :8081",
                 Link { class: "link link-primary", to: Route::SmsPage {}, "Xem tin nhắn →" }
             }
+            Stat { title: "API Mock", value: "3", desc: "API :8086",
+                Link { class: "link link-primary", to: Route::ApiMockPage {}, "Xem tin nhắn →" }
+            }
         }
     }
 }
@@ -120,9 +123,24 @@ pub fn DnsPage() -> Element {
 #[component]
 pub fn SmsPage() -> Element {
     let rows = [
-        ("+84901000001", "Mã OTP của bạn là 123456", "Đã gửi", Tone::Success),
-        ("+84901000002", "Đơn hàng #1024 đang giao", "Đang chờ", Tone::Warning),
-        ("+84901000003", "Chào mừng đến MockHub", "Đã gửi", Tone::Success),
+        (
+            "+84901000001",
+            "Mã OTP của bạn là 123456",
+            "Đã gửi",
+            Tone::Success,
+        ),
+        (
+            "+84901000002",
+            "Đơn hàng #1024 đang giao",
+            "Đang chờ",
+            Tone::Warning,
+        ),
+        (
+            "+84901000003",
+            "Chào mừng đến MockHub",
+            "Đã gửi",
+            Tone::Success,
+        ),
     ];
     rsx! {
         PageHeader { title: "SMS", subtitle: "Tin nhắn giả lập nhận qua API :8081." }
@@ -133,6 +151,30 @@ pub fn SmsPage() -> Element {
                         td { "{to}" }
                         td { "{body}" }
                         td { Badge { tone, "{status}" } }
+                    }
+                }
+            }
+        }
+    }
+}
+
+#[component]
+pub fn ApiMockPage() -> Element {
+    let rows = [
+        ("noreply@app.test", "Xác nhận đăng ký", "10:02", true),
+        ("billing@shop.test", "Hóa đơn #1024", "09:40", false),
+        ("alice@example.test", "Re: họp sprint", "Hôm qua", false),
+    ];
+    rsx! {
+        PageHeader { title: "API Mock", subtitle: "setup mock api" }
+        Card {
+            Table { head: vec!["Từ", "Tiêu đề", "Thời gian", ""],
+                for (from, subject, at, unread) in rows {
+                    tr {
+                        td { "{from}" }
+                        td { "{subject}" }
+                        td { "{at}" }
+                        td { if unread { Badge { tone: Tone::Primary, "Mới" } } }
                     }
                 }
             }
