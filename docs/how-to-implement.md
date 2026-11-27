@@ -59,11 +59,8 @@ pub trait Storage: DnsRecordRepo + SmsRepo + 'static {}
 impl<T: DnsRecordRepo + SmsRepo + 'static> Storage for T {}
 ```
 
-**Đặt tên method duy nhất giữa các repo** (`list_sms`, không phải `list`). `Storage` gộp nhiều trait; hai trait cùng có
-`list` thì `storage.list()` báo lỗi mơ hồ (Rust không chọn theo kiểu trả về). `DnsRecordRepo` hiện dùng tên chung
-(`list`/`create`/`delete`) nên **ngay khi thêm repo thứ hai có `list`, các lời gọi cũ trong `api.rs` sẽ lỗi**: hoặc đổi
-tên method DNS thành `list_dns_records`... (sửa ở trait, backend và `api.rs`), hoặc gọi tường minh
-`DnsRecordRepo::list(&**storage)`. Nên đổi tên sớm, trước khi thêm repo mới.
+**Đặt tên method duy nhất giữa các repo** (`list_sms`, không phải `list`): `Storage` gộp nhiều trait, hai trait cùng
+có `list` thì `storage.list()` báo lỗi mơ hồ. Các repo hiện có theo quy ước này (`list_dns_records`, `list_mails`).
 
 ### 1.3 Migration + backend SQLite
 
@@ -116,7 +113,8 @@ Quy tắc:
 
 Copy `DnsPage` làm khuôn:
 - Đọc: `let mut items = use_server_future(api::list_sms)?;` — chạy trên server khi SSR, client hydrate dùng lại kết quả.
-  (Dùng `use_resource` nếu không cần SSR.) Sau khi ghi: `items.restart()`.
+  (Dùng `use_resource` nếu không cần SSR.) Sau khi ghi: `items.restart()`. Trang cần tự làm mới thì dùng
+  `live::use_live` (mẫu: `pages/mail.rs`): `restart()` đưa component về suspend nên trang chớp mỗi lần.
 - Ghi: gọi hàm server trong event handler `async move { api::create_sms(...).await }`.
 - Xử lý đủ 3 trạng thái của `items.read()`: `Some(Ok)`, `Some(Err)`, `None` (đang tải); và danh sách rỗng.
 - Đăng ký route: thêm biến thể vào enum `Route` ở `app.rs`, link ở `layouts/mod.rs`.
@@ -130,7 +128,7 @@ Hiện mỗi crate có `pub async fn run(host, cfg)` là khung. Khuôn chung:
 
    ```rust
    let storage = mockhub_storage::connect(&cfg.database.url).await?;
-   mockhub_web::server::set_storage(storage.clone());
+   mockhub_web::server::init(Engine::new(storage.clone()), ports);
    // ...
    tasks.spawn(async move { Ok(mockhub_mail::run(&host, &cfg.mail, storage).await?) });
    ```

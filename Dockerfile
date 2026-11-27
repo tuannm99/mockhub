@@ -27,8 +27,8 @@ COPY --from=builder /app/target/dx/mockhub-web/release/web/public ./public
 COPY config ./config
 USER mockhub
 
-# web | smtp | imap | sms | dns(udp)
-EXPOSE 8686 2525 1143 8081 5353/udp
+# web | smtp | imap | pop3 | sms | api | dns(udp, tcp)
+EXPOSE 8686 2525 1143 1110 8081 8053 5353/udp 5353/tcp
 # SQLite nằm ở /data (mount volume để giữ dữ liệu giữa các lần chạy)
 VOLUME /data
 ENV MOCKHUB__SERVER__HOST=0.0.0.0 \

@@ -1,8 +1,12 @@
 use std::net::SocketAddr;
 use std::path::PathBuf;
+use std::sync::Arc;
 
+use axum::middleware::from_fn_with_state;
 use clap::{Parser, Subcommand};
 use mockhub_core::config::Config;
+use mockhub_dns::Engine;
+use mockhub_web::api::Ports;
 use tokio::task::JoinSet;
 use tracing_subscriber::EnvFilter;
 
@@ -25,6 +29,8 @@ enum Cmd {
     Mail,
     Dns,
     Sms,
+    /// REST `/v1/...` và DoH JSON `/resolve`
+    Api,
 }
 
 fn main() -> anyhow::Result<()> {
@@ -47,9 +53,10 @@ fn resolve_public_dir() -> Option<PathBuf> {
         .map(PathBuf::from)
         .into_iter()
         .chain(exe_public)
-        .chain(["release", "debug"].map(|p| {
-            PathBuf::from(format!("target/dx/mockhub-web/{p}/web/public"))
-        }));
+        .chain(
+            ["release", "debug"]
+                .map(|p| PathBuf::from(format!("target/dx/mockhub-web/{p}/web/public"))),
+        );
     let dir = candidates.into_iter().find(|d| d.is_dir())?;
     let dir = dir.canonicalize().unwrap_or(dir);
     // SAFETY: gọi từ `main` trước khi tạo bất kỳ thread nào.
@@ -67,13 +74,20 @@ async fn run(public_dir: Option<PathBuf>) -> anyhow::Result<()> {
     let cmd = cli.command.unwrap_or(Cmd::All);
     let all = matches!(cmd, Cmd::All);
 
+    // Mở storage một lần, mọi service dùng chung. Backend chọn theo scheme của `database.url`;
+    // phần còn lại của app chỉ thấy `dyn Storage`.
+    let storage = mockhub_storage::connect(&cfg.database.url).await?;
+
+    // DNS, DoH và trang "tra thử" dùng chung engine nên trả cùng kết quả.
+    let engine = Engine::new(storage.clone()).with_upstream(cfg.dns.upstream.as_deref());
+
     let mut tasks: JoinSet<anyhow::Result<()>> = JoinSet::new();
 
     if all || matches!(cmd, Cmd::Web) {
         match public_dir {
             Some(dir) => {
                 tracing::info!("web assets: {}", dir.display());
-                tasks.spawn(web(cfg.clone()));
+                tasks.spawn(web(cfg.clone(), engine.clone()));
             }
             // `all` vẫn chạy mail/dns/sms khi chưa build client; `web` thì báo lỗi rõ ràng.
             None if all => tracing::warn!("bỏ qua web: không thấy client build. {WEB_HINT}"),
@@ -81,12 +95,23 @@ async fn run(public_dir: Option<PathBuf>) -> anyhow::Result<()> {
         }
     }
     if (all && cfg.mail.enabled) || matches!(cmd, Cmd::Mail) {
-        let cfg = cfg.clone();
-        tasks.spawn(async move { Ok(mockhub_mail::run(&cfg.server.host, &cfg.mail).await?) });
+        let (cfg, storage) = (cfg.clone(), storage.clone());
+        tasks.spawn(async move {
+            let token = cfg.auth.token();
+            Ok(mockhub_mail::run(&cfg.server.host, &cfg.mail, storage, token).await?)
+        });
     }
     if (all && cfg.dns.enabled) || matches!(cmd, Cmd::Dns) {
-        let cfg = cfg.clone();
-        tasks.spawn(async move { Ok(mockhub_dns::run(&cfg.server.host, &cfg.dns).await?) });
+        let (cfg, storage) = (cfg.clone(), storage.clone());
+        tasks
+            .spawn(async move { Ok(mockhub_dns::run(&cfg.server.host, &cfg.dns, storage).await?) });
+    }
+    if (all && cfg.api.enabled) || matches!(cmd, Cmd::Api) {
+        let (cfg, engine) = (cfg.clone(), engine.clone());
+        tasks.spawn(async move {
+            let token = cfg.auth.token();
+            Ok(mockhub_api::run(&cfg.server.host, &cfg.api, &cfg.mail, engine, token).await?)
+        });
     }
     if (all && cfg.sms.enabled) || matches!(cmd, Cmd::Sms) {
         let cfg = cfg.clone();
@@ -106,18 +131,36 @@ async fn run(public_dir: Option<PathBuf>) -> anyhow::Result<()> {
 const WEB_HINT: &str = "Chạy `cd crates/mockhub-web && dx build --release --platform web` \
     hoặc đặt DIOXUS_PUBLIC_PATH tới thư mục public đã build.";
 
-async fn web(cfg: Config) -> anyhow::Result<()> {
-    // Backend chọn theo scheme của `database.url`; phần còn lại của app chỉ thấy `dyn Storage`.
-    let storage = mockhub_storage::connect(&cfg.database.url).await?;
-    mockhub_web::server::set_storage(storage);
+async fn web(cfg: Config, engine: Engine) -> anyhow::Result<()> {
+    mockhub_web::server::init(engine, ports(&cfg));
 
     let addr: SocketAddr = format!("{}:{}", cfg.server.host, cfg.server.port).parse()?;
     // SSR + hydrate: dioxus tự mount static assets (đọc `DIOXUS_PUBLIC_PATH`, mặc định
     // `<thư mục exe>/public`), render HTML phía server và đăng ký các server function (`/api/...`).
-    let app: axum::Router = dioxus::server::router(mockhub_web::app::App);
+    let mut app: axum::Router = dioxus::server::router(mockhub_web::app::App);
+    if let Some(token) = cfg.auth.token() {
+        // Bọc cả router: trang, server function lẫn file tĩnh.
+        app = app.layer(from_fn_with_state(
+            Arc::<str>::from(token),
+            mockhub_api::auth::require_basic,
+        ));
+    }
 
     tracing::info!("web listening on http://{addr}");
     let listener = tokio::net::TcpListener::bind(addr).await?;
     axum::serve(listener, app).await?;
     Ok(())
+}
+
+/// Cổng đang cấu hình, để UI hướng dẫn nối client. `0` = tắt.
+fn ports(cfg: &Config) -> Ports {
+    let on = |enabled: bool, port: u16| if enabled { port } else { 0 };
+    Ports {
+        smtp: on(cfg.mail.enabled, cfg.mail.smtp_port),
+        imap: on(cfg.mail.enabled, cfg.mail.imap_port),
+        pop3: on(cfg.mail.enabled, cfg.mail.pop3_port),
+        dns: on(cfg.dns.enabled, cfg.dns.port),
+        api: on(cfg.api.enabled, cfg.api.port),
+        sms: on(cfg.sms.enabled, cfg.sms.port),
+    }
 }

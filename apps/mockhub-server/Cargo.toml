@@ -15,6 +15,7 @@ mockhub-web = { workspace = true, features = ["server"] }
 mockhub-mail.workspace = true
 mockhub-dns.workspace = true
 mockhub-sms.workspace = true
+mockhub-api.workspace = true
 
 tokio.workspace = true
 anyhow.workspace = true

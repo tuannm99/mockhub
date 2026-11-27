@@ -5,12 +5,19 @@ services:
       - "8686:8686"       # web
       - "2525:2525"       # smtp
       - "1143:1143"       # imap
+      - "1110:1110"       # pop3
       - "8081:8081"       # sms api
-      - "5353:5353/udp"   # dns
+      - "8053:8053"       # REST + DoH
+      - "${MOCKHUB_DNS_HOST_PORT:-5353}:5353/udp"   # dns (5353 trên host thường bị mDNS chiếm: đặt 15353)
+      - "${MOCKHUB_DNS_HOST_PORT:-5353}:5353/tcp"
     environment:
       # SQLite (file trong volume). Đổi backend: xem hướng dẫn ở crates/mockhub-storage/src/lib.rs
       MOCKHUB__DATABASE__URL: sqlite:///data/mockhub.db
       RUST_LOG: info
+      # Đặt trên instance dùng chung; rỗng = không xác thực.
+      MOCKHUB__AUTH__ADMIN_TOKEN: ${MOCKHUB_ADMIN_TOKEN:-}
+      # Resolver thật cho tên mock không sở hữu (vd 1.1.1.1:53); rỗng = NXDOMAIN.
+      MOCKHUB__DNS__UPSTREAM: ${MOCKHUB_DNS_UPSTREAM:-}
     volumes:
       - mockhub-data:/data
 

@@ -31,6 +31,8 @@ sqlx = { version = "0.9", default-features = false, features = ["runtime-tokio",
 uuid = { version = "1", features = ["v4", "serde"] }
 chrono = { version = "0.4", features = ["serde"] }
 async-trait = "0.1"
+base64 = "0.22"
+subtle = "2"
 mail-parser = "1"
 mail-builder = "2"
 hickory-proto = "0.26"

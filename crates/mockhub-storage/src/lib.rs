@@ -15,7 +15,7 @@ pub mod sqlite;
 use std::sync::Arc;
 
 pub use error::{Result, StorageError};
-pub use repo::{DnsRecordRepo, Storage};
+pub use repo::{DnsFaultRepo, DnsQueryRepo, DnsRecordRepo, MailRepo, MailboxRepo, Storage};
 
 /// Mở storage theo scheme của `url` (và chạy migration).
 pub async fn connect(url: &str) -> Result<Arc<dyn Storage>> {

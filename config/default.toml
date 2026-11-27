@@ -9,12 +9,25 @@ url = "sqlite://data/mockhub.db"
 [mail]
 enabled = true
 smtp_port = 2525
-imap_port = 1143
+imap_port = 1143 # 0 = tắt
+pop3_port = 1110 # 0 = tắt
+capacity = 500   # số thư giữ lại
 
 [dns]
 enabled = true
-port = 5353
+port = 5353      # UDP và TCP
+# seed_file = "config/seed.example.json"   # nạp khi DB chưa có record nào
+# upstream = "1.1.1.1:53"  # chuyển tên mock không sở hữu lên resolver thật (mặc định: NXDOMAIN)
 
 [sms]
 enabled = true
 port = 8081
+
+[api]
+enabled = true
+port = 8053      # REST /v1/... và DoH JSON /resolve
+
+[auth]
+# Đặt trên instance dùng chung (hoặc env MOCKHUB__AUTH__ADMIN_TOKEN): REST /v1 đòi `Authorization: Bearer`,
+# web UI đòi HTTP Basic (mật khẩu = token), IMAP/POP3 đòi mật khẩu = token. Cổng truy vấn DNS và SMTP vẫn mở.
+# admin_token = ""

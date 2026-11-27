@@ -8,11 +8,17 @@ Kiến trúc tổng quan: mục "Kiến trúc" trong [README.md](README.md).
 - ✅ Workspace nhiều crate, một binary `mockhub` (`all|web|mail|dns|sms`), config TOML + env override.
 - ✅ Web UI Dioxus fullstack (SSR + hydrate), server function làm API cho UI.
 - ✅ Style Tailwind v4 + DaisyUI v5, `public/app.css` commit sẵn (build không cần Node).
-- ✅ Storage: trait `Storage` + backend SQLite + migration nhúng; mới có bảng `dns_records`.
+- ✅ Storage: trait `Storage` + backend SQLite + migration nhúng (record, fault DNS, mail).
+- ✅ DNS: UDP + TCP, record, CNAME, wildcard, lỗi giả lập, seed (2026-11-27).
+- ✅ SMTP nhận và lưu thư, phân biệt To/CC/BCC theo phong bì (2026-11-27).
+- ✅ REST `/v1` cho DNS và mail, DoH JSON `/resolve` (2026-11-27).
 - ✅ Trang DNS chạy đủ vòng: form → server function → storage → bảng.
 - ✅ Docker (multi-stage, runtime `trixie-slim`, SQLite ở `/data` volume), `docker compose`.
-- 🟡 Mail / DNS / SMS: chỉ là khung — bind cổng, trả banner/501, chưa xử lý thật.
-- 🟡 Trang Mail, SMS, số liệu ở Home: dữ liệu mẫu cứng (chưa nối storage).
+- ✅ IMAP + POP3 đọc cùng kho thư, cờ/xoá riêng từng hộp (2026-11-27).
+- ✅ DoH RFC 8484, log truy vấn DNS (REST + UI), forward tùy chọn lên resolver thật (2026-11-27).
+- ✅ Admin token cho REST, web UI, IMAP, POP3 (2026-11-27).
+- ✅ Trang Mail và DNS (record, lỗi giả lập, tra thử, log), số liệu Mail/DNS ở Home (2026-11-27).
+- 🟡 SMS: chỉ là khung — bind cổng, trả 501. Trang SMS và API Mock là dữ liệu mẫu.
 
 ## Phạm vi đã chốt
 
@@ -27,42 +33,48 @@ Thứ tự làm: DNS → Mail → SMS → HTTP mock (đúng thứ tự ưu tiên
 
 ## Phase 1 — DNS đủ để mock mọi case
 
+> 2026-11-27: phần lớn đã xong, gồm TTL, lỗi giả lập và log truy vấn trên UI. Còn: tỉ lệ lỗi chập chờn, gói sai cú
+> pháp. Reverse `PTR` và `SOA` đi qua bộ parse chung nhưng chưa có test.
+
 Mục tiêu: `dig @127.0.0.1 -p 5353 <tên> <loại>` cho ra đúng tình huống đã cấu hình trên UI/DB.
 
 **Loại record** (mở rộng `kind`, thêm `ttl`, `priority` cho MX/SRV):
-- ⬜ `A`, `AAAA`, `CNAME`, `MX`, `TXT`, `NS`, `PTR`, `SRV`, `CAA`, `SOA`.
-- ⬜ Nhiều record cùng tên + loại (round-robin), TTL tuỳ chỉnh, chuỗi CNAME (và vòng lặp CNAME để test client).
-- ⬜ Wildcard (`*.app.test`), tên có ký tự hoa/thường, reverse (`in-addr.arpa`) cho PTR.
+- ✅ `A`, `AAAA`, `CNAME`, `MX`, `TXT`, `NS`, `PTR`, `SRV`, `CAA`, `SOA`.
+- 🟡 Nhiều record cùng tên + loại (round-robin), TTL tuỳ chỉnh, chuỗi CNAME (và vòng lặp CNAME để test client).
+- ✅ Wildcard (`*.app.test`), tên có ký tự hoa/thường, reverse (`in-addr.arpa`) cho PTR.
 
 **Tình huống lỗi/bất thường** (bảng luật `dns_rules`: khớp tên [exact/wildcard] + loại → hành vi):
-- ⬜ `NXDOMAIN`, `NODATA` (tên có nhưng không có loại đó), `SERVFAIL`, `REFUSED`.
-- ⬜ Không trả lời (timeout), trả lời **chậm** (`delay_ms`), trả lời chập chờn (tỉ lệ lỗi %).
-- ⬜ Cắt gói (**TC bit**) để client chuyển sang TCP → cần nghe cả **TCP lẫn UDP** (hiện chỉ có UDP).
+- ✅ `NXDOMAIN`, `NODATA` (tên có nhưng không có loại đó), `SERVFAIL`, `REFUSED`.
+- 🟡 Không trả lời (timeout), trả lời **chậm** (`delay_ms`), trả lời chập chờn (tỉ lệ lỗi %).
+- 🟡 Cắt gói (**TC bit**) để client chuyển sang TCP → cần nghe cả **TCP lẫn UDP** (hiện chỉ có UDP).
 - ⬜ Gói lỗi cú pháp (malformed) để test client xử lý (tuỳ chọn).
-- ⬜ Tên không có trong DB: mặc định `NXDOMAIN` (quyết định forward hay không: xem câu hỏi mở).
+- ✅ Tên không có trong DB: mặc định `NXDOMAIN` (quyết định forward hay không: xem câu hỏi mở).
 
 **Kỹ thuật**
-- ⬜ `mockhub-dns` nhận `Arc<dyn Storage>`, tra `DnsRecordRepo` + `DnsRuleRepo` mỗi query (SQLite local đủ nhanh); dùng `hickory-server`.
-- ⬜ Validate `kind`/`value` khi tạo (parse thử thành `RData`), báo lỗi rõ cho UI.
-- ⬜ UI: bảng record (đã có, mở rộng cột TTL/priority) + trang quản lý luật lỗi; log query gần đây (tên, loại, hành vi đã áp) để debug.
-- ⬜ Test: tạo record/luật qua `Storage`, gửi query UDP/TCP thật, kiểm tra response và độ trễ.
+- 🟡 `mockhub-dns` nhận `Arc<dyn Storage>`, tra `DnsRecordRepo` + `DnsRuleRepo` mỗi query (SQLite local đủ nhanh); dùng `hickory-server`.
+- 🟡 Validate `kind`/`value` khi tạo (parse thử thành `RData`), báo lỗi rõ cho UI.
+- 🟡 UI: bảng record (đã có, mở rộng cột TTL/priority) + trang quản lý luật lỗi; log query gần đây (tên, loại, hành vi đã áp) để debug.
+- 🟡 Test: tạo record/luật qua `Storage`, gửi query UDP/TCP thật, kiểm tra response và độ trễ.
 
 ## Phase 2 — Mail (SMTP nhận; IMAP + POP3 đọc; UI xem đủ)
+
+> 2026-11-27: SMTP, lưu trữ, IMAP, POP3 và UI đã xong. Còn: file đính kèm (vẫn nằm trong `raw`: chưa tách, chưa liệt
+> kê/tải trên UI, `BODYSTRUCTURE` của IMAP chưa mô tả MIME thật), xoá từng thư trên UI.
 
 Mục tiêu: app gửi SMTP tới `:2525`; đọc được bằng client IMAP (`:1143`) **hoặc** POP3 (`:1110`, mới); UI hiển thị đúng như một hộp thư.
 
 **Lưu trữ** (migration mới):
-- ⬜ `mails`: `message_id`, `envelope_from`, `from`, `subject`, `raw` (nguyên văn), `text`, `html`, `received_at`, `read`.
-- ⬜ `mail_recipients`: `mail_id`, `kind` (`to`/`cc`/`bcc`), `address`. **BCC không có trong header** — suy ra từ envelope
+- 🟡 `mails`: `message_id`, `envelope_from`, `from`, `subject`, `raw` (nguyên văn), `text`, `html`, `received_at`, `read`.
+- 🟡 `mail_recipients`: `mail_id`, `kind` (`to`/`cc`/`bcc`), `address`. **BCC không có trong header** — suy ra từ envelope
   (`RCPT TO` trừ các địa chỉ đã thấy ở `To`/`Cc`), nên SMTP phải ghi lại envelope, không chỉ parse header.
 - ⬜ `mail_attachments`: `mail_id`, `filename`, `content_type`, `size`, nội dung (BLOB hoặc cắt ra từ `raw` khi tải).
 
 **Giao thức**
-- ⬜ SMTP: `EHLO/HELO, MAIL FROM, RCPT TO, DATA, RSET, NOOP, QUIT`; parse bằng `mail-parser`; giới hạn kích thước.
-- ⬜ IMAP tối thiểu cho client thật: `CAPABILITY, LOGIN, LIST, SELECT, FETCH, STORE, SEARCH(đơn giản), EXPUNGE, LOGOUT`.
-- ⬜ **POP3 (mới)**: `USER, PASS, STAT, LIST, UIDL, RETR, TOP, DELE, NOOP, RSET, QUIT` (xoá có hiệu lực khi `QUIT`).
+- ✅ SMTP: `EHLO/HELO, MAIL FROM, RCPT TO, DATA, RSET, NOOP, QUIT`; parse bằng `mail-parser`; giới hạn kích thước.
+- ✅ IMAP tối thiểu cho client thật: `CAPABILITY, LOGIN, LIST, SELECT, FETCH, STORE, SEARCH(đơn giản), EXPUNGE, LOGOUT`.
+- ✅ **POP3 (mới)**: `USER, PASS, STAT, LIST, UIDL, RETR, TOP, DELE, NOOP, RSET, QUIT` (xoá có hiệu lực khi `QUIT`).
   Thêm `pop3_port` vào `MailConfig` + `config/default.toml` + bảng cổng README (đề xuất `1110`, cùng kiểu với IMAP `1143`).
-- ⬜ IMAP và POP3 cùng đọc **một kho** (`MailRepo`), không có bản sao riêng.
+- ✅ IMAP và POP3 cùng đọc **một kho** (`MailRepo`), không có bản sao riêng.
 
 **UI**
 - ⬜ Danh sách: người gửi, tiêu đề, thời gian, chưa đọc, biểu tượng đính kèm.
@@ -107,12 +119,12 @@ Mục tiêu: app của bạn gọi `http://localhost:8082/...` và nhận respon
 - ⬜ Test tích hợp: chạy server thật trên cổng ngẫu nhiên, đi qua SMTP/DNS/HTTP.
 - ⬜ Postgres backend (khi cần): xem "Chuyển sang Postgres" trong [how-to](docs/how-to-implement.md).
 - ⬜ Quan sát: log có cấu trúc, `/healthz`, (tuỳ chọn) metrics.
-- ⬜ Xác thực UI/API nếu hub chạy ngoài máy dev.
+- ✅ Xác thực UI/API nếu hub chạy ngoài máy dev (admin token; chưa có TLS).
 - ⬜ Dọn nợ kỹ thuật (bên dưới).
 
 ## Nợ kỹ thuật đã biết
 
-- Số liệu ở Home (`"3"`), trang Mail và SMS là dữ liệu mẫu cứng trong `pages/mod.rs`.
+- Trang SMS và API Mock là dữ liệu mẫu cứng trong `pages/mod.rs`.
 - `Routable` derive báo cảnh báo `unreachable call` (từ macro Dioxus, không phải lỗi của mình).
 - Workspace deps thừa gây cảnh báo (`toml`, `mockhub-api` nếu không dùng) — dọn khi chốt các quyết định mở.
 - `web()` tự mở storage; khi `mail/dns/sms` cần storage thì nên mở **một lần** ở `run()` rồi truyền `Arc<dyn Storage>` xuống.

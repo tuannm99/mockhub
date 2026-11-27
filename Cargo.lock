@@ -83,12 +83,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "2cb931c189b85683d69a5cfad41d4d418671e1ac413dd209f3f2fc31e3cfd902"
 
 [[package]]
-name = "array-const-fn-init"
-version = "0.1.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8bcb85e548c05d407fa6faff46b750ba287714ef32afc0f5e15b4641ffd6affb"
-
-[[package]]
 name = "askama_escape"
 version = "0.13.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1099,7 +1093,7 @@ dependencies = [
  "tokio-tungstenite 0.28.0",
  "tokio-util",
  "tower",
- "tower-http 0.6.11",
+ "tower-http",
  "tower-layer",
  "tracing",
  "tungstenite 0.27.0",
@@ -1377,7 +1371,7 @@ dependencies = [
  "tokio-tungstenite 0.28.0",
  "tokio-util",
  "tower",
- "tower-http 0.6.11",
+ "tower-http",
  "tracing",
  "tracing-futures",
  "url",
@@ -1766,16 +1760,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "gethostname"
-version = "1.1.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1bd49230192a3797a9a4d6abe9b3eed6f7fa4c8a8a4947977c6f80025f92cbd8"
-dependencies = [
- "rustix",
- "windows-link",
-]
-
-[[package]]
 name = "getrandom"
 version = "0.2.17"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1970,30 +1954,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7f24254aa9a54b5c858eaee2f5bccdb46aaf0e486a595ed5fd8f86ba55232a70"
 
 [[package]]
-name = "hickory-net"
-version = "0.26.4"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ea9b43710d47761c90da994eeec7e1bee50095f2b4bcdfd42acd67ca5f814e47"
-dependencies = [
- "async-trait",
- "cfg-if",
- "data-encoding",
- "futures-channel",
- "futures-io",
- "futures-util",
- "hickory-proto",
- "idna",
- "ipnet",
- "jni 0.22.4",
- "rand 0.10.4",
- "thiserror 2.0.21",
- "tinyvec",
- "tokio",
- "tracing",
- "url",
-]
-
-[[package]]
 name = "hickory-proto"
 version = "0.26.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2006,34 +1966,10 @@ dependencies = [
  "once_cell",
  "rand 0.10.4",
  "ring",
- "serde",
  "thiserror 2.0.21",
  "tinyvec",
  "tracing",
  "url",
-]
-
-[[package]]
-name = "hickory-server"
-version = "0.26.4"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "bc612071fc85d6eda57193a56961e25768159afcf859085dee44827f19a960c8"
-dependencies = [
- "async-trait",
- "bytes",
- "cfg-if",
- "data-encoding",
- "futures-util",
- "hickory-net",
- "hickory-proto",
- "ipnet",
- "prefix-trie",
- "serde",
- "thiserror 2.0.21",
- "time",
- "tokio",
- "tokio-util",
- "tracing",
 ]
 
 [[package]]
@@ -2346,9 +2282,6 @@ name = "ipnet"
 version = "2.12.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "791930b43c0d5973160d90a8f3894509f2b273430f5c5c73b668636d0287c5c0"
-dependencies = [
- "serde",
-]
 
 [[package]]
 name = "is_terminal_polyfill"
@@ -2596,17 +2529,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "mail-builder"
-version = "2.0.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "aca3ad941e4c466402151719d6b4cea4bdfcb212b11e5970afa75e7d28c6502a"
-dependencies = [
- "encodify",
- "gethostname",
- "web-time",
-]
-
-[[package]]
 name = "mail-parser"
 version = "1.0.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2743,15 +2665,15 @@ name = "mockhub-api"
 version = "0.1.0"
 dependencies = [
  "axum",
+ "base64 0.22.1",
+ "hickory-proto",
  "mockhub-core",
  "mockhub-dns",
- "mockhub-mail",
- "mockhub-sms",
  "mockhub-storage",
  "serde",
  "serde_json",
  "tokio",
- "tower-http 0.7.1",
+ "tower",
  "tracing",
 ]
 
@@ -2759,9 +2681,11 @@ dependencies = [
 name = "mockhub-core"
 version = "0.1.0"
 dependencies = [
+ "base64 0.22.1",
  "chrono",
  "config",
  "serde",
+ "subtle",
  "thiserror 2.0.21",
  "uuid",
 ]
@@ -2770,22 +2694,22 @@ dependencies = [
 name = "mockhub-dns"
 version = "0.1.0"
 dependencies = [
- "async-trait",
  "hickory-proto",
- "hickory-server",
  "mockhub-core",
  "mockhub-storage",
+ "serde",
+ "serde_json",
  "thiserror 2.0.21",
  "tokio",
  "tracing",
+ "uuid",
 ]
 
 [[package]]
 name = "mockhub-mail"
 version = "0.1.0"
 dependencies = [
- "async-trait",
- "mail-builder",
+ "base64 0.22.1",
  "mail-parser",
  "mockhub-core",
  "mockhub-storage",
@@ -2802,6 +2726,7 @@ dependencies = [
  "axum",
  "clap",
  "dioxus",
+ "mockhub-api",
  "mockhub-core",
  "mockhub-dns",
  "mockhub-mail",
@@ -2846,6 +2771,7 @@ version = "0.1.0"
 dependencies = [
  "dioxus",
  "mockhub-core",
+ "mockhub-dns",
  "mockhub-storage",
  "serde",
 ]
@@ -3108,19 +3034,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "prefix-trie"
-version = "0.10.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "77fe9ec8fb906114b52bc2e9aa142ac11817d0fcd33a32fb2feb94d823ad9a4d"
-dependencies = [
- "array-const-fn-init",
- "either",
- "ipnet",
- "num-traits",
- "smallvec",
-]
-
-[[package]]
 name = "proc-macro-crate"
 version = "3.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3365,7 +3278,7 @@ dependencies = [
  "tokio-rustls",
  "tokio-util",
  "tower",
- "tower-http 0.6.11",
+ "tower-http",
  "tower-service",
  "url",
  "wasm-bindgen",
@@ -3404,7 +3317,7 @@ dependencies = [
  "tokio",
  "tokio-rustls",
  "tower",
- "tower-http 0.6.11",
+ "tower-http",
  "tower-service",
  "url",
  "wasm-bindgen",
@@ -4455,32 +4368,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "tower-http"
-version = "0.7.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "08a05a66a4fdd61cbbe0a1d755ffe0ca6aba159dd4820936a0ff8a8278245b9c"
-dependencies = [
- "bitflags",
- "bytes",
- "futures-core",
- "futures-util",
- "http",
- "http-body",
- "http-body-util",
- "http-range-header",
- "httpdate",
- "mime",
- "mime_guess",
- "percent-encoding",
- "pin-project-lite",
- "tokio",
- "tokio-util",
- "tower-layer",
- "tower-service",
- "tracing",
-]
-
-[[package]]
 name = "tower-layer"
 version = "0.3.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4698,7 +4585,6 @@ dependencies = [
  "idna",
  "percent-encoding",
  "serde",
- "serde_derive",
 ]
 
 [[package]]
